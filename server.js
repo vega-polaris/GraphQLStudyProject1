@@ -1,6 +1,8 @@
 const express = require('express');
 // by convention, the capitalization is GraphQL, not graphQl or graphQL or anything else.
 const expressGraphQL = require('express-graphql');
+const schema = require('./schema/schema');
+// this line is added after we've created (and exported) our schema in the schema file.
 
 const app = express();
 
@@ -13,6 +15,8 @@ app.use(
     expressGraphQL(
         // the object below is the options object of the GraphQL middleware. If you run the server with just 'graphiql: true' in this object, you'll get an error: "GraphQL middleware options must contain a schema." This refers to how GraphQL views all of our data as a graph. We need to inform GraphQL about the type of data we're working with, and how the relations between the different pieces of data work. This is done in a separate folder - see "schema".
         {
+            schema,
+            // line added after creating schema in the schema file
             graphiql: true
             // graphiql is a dev tool that allows us to make queries against our dev server, so only for a dev environment
         }
