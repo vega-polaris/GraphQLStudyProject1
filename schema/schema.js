@@ -22,6 +22,17 @@ const {
     // takes in a root query and returns a schema.
 } = graphql;
 
+const CompanyType = new GraphQLObjectType({
+    name: 'Company',
+    fields: {
+        id: { type: GraphQLString },
+        name: { type: GraphQLString },
+        description: { type: GraphQLString }
+        // we treat associations between types exactly as though they were another field. You can see the company field added to the user type.
+    }
+});
+// the order of definiton of the types really matters! Don't know why yet, but it does.
+
 const UserType = new GraphQLObjectType({
     // the object we pass has two required properties:
     name: 'User',
@@ -32,7 +43,22 @@ const UserType = new GraphQLObjectType({
         id: { type: GraphQLString },
         // we can't just tell GraphQL "this is a string". This is why we use built-in GraphQL types.
         firstName: { type: GraphQLString },
-        age: { type: GraphQLInt }
+        age: { type: GraphQLInt },
+        // the below line acts as a foreign key to the Company type.
+        company: {
+            // handle relationships by including the other table as one of the user's fields.
+            // with table relationships, we would expect to have to call this foreign key "companyID", not just "company". Why are we able to get away with this?
+            // the database models do have this property as an ID, but when we are working with the object, we want the object, not just its ID. GraphQL's database requests happen via resolve functions; they are what allows us to make necessary changes to the data before returning it to the user. So now that we're about to dip back into the database to get the companies, we need a resolve function in UserType as well as in our root query.
+            type: CompanyType, // notice the companytype data type - our custom data types are treated in the same way as GQL's built-in ones.
+            async resolve(parentValue, args) {
+                // we want to somehow return the company associated with the user from this     resolve function.
+                // the parentValue object contains the user object that is returned from the parent query of this resolve function. Back in our DB, we've put a companyId property on the user. Here, we can access that ID through the parentValue object:
+                let { data } = await axios.get(
+                    `http://localhost:3000/companies/${parentValue.companyId}`
+                );
+                return data;
+            }
+        }
     }
 });
 
@@ -72,6 +98,17 @@ const RootQuery = new GraphQLObjectType({
                 return data;
                 // the resolve func can also work asynchronously, i.e. return a promise. GraphQL detects that a promise has been returned. It'll wait for the promise to resolve and then return the data to the user.
             }
+        },
+        // the below - a sibling to "user" - is our root query's second entry point.
+        company: {
+            type: CompanyType,
+            args: { id: { type: GraphQLString } },
+            async resolve(parentValue, args) {
+                let { data } = await axios.get(
+                    `http://localhost:3000/companies/${args.id}`
+                );
+                return data;
+            }
         }
     }
 });
@@ -80,3 +117,18 @@ module.exports = new GraphQLSchema({
     // this is where we turn the query into a schema.
     query: RootQuery
 });
+
+/******** GENERAL NOTES *******
+ * What happens when we make a query?
+    For example:
+    {
+        user(id: "23") {
+        firstName
+        }
+    }
+ The query goes to our roots query with an args object that contains the argument that we passed into it - in this case, that the user's ID is 23.
+ The root query points us ot the user with id 23 thanks to the resolve function; so in a way, the resolve functions take us from one place on the graph to another.
+ Now, once we're standing at the right user, we realize that we also want this user's company info; now the UserType's resolve () is called, and that information is fetched from the backend.
+ We are NOT passing args down the chain. It's the user who's passed down, and we are able to use the user's companyId property.
+ Think of each edge in your graph as a resolve function that brings you to another node in the graph.
+*/

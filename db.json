@@ -1,7 +1,7 @@
 {
     "_comments": {
         "whatIsThisFile": "To avoid messing around with a real db setup, especially one that imitates a situation with a large amount of data resting in multiple DBs and maybe even outer-APIs, we are using json-server. This is going to be a completely separate process from the graphQL processes.",
-        "settingUpTableRelationships": "To set up a relationship between users and the companies they work at, it's enought to provide a foreign key in the users' objects."
+        "settingUpTableRelationships": "To set up a relationship between users and the companies they work at, it's enought to provide a foreign key in the users' objects. The connection is done behind the scenes by json server."
     },
     "users": [
         { "id": "23", "firstName": "Bill", "age": 20, "companyId": "1" },
