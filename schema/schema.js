@@ -18,18 +18,33 @@ const {
     GraphQLInt,
     GraphQLString,
     // those are GraphQL data types - see them applied in the object passed into the User Type schema.
-    GraphQLSchema
+    GraphQLSchema,
     // takes in a root query and returns a schema.
+    GraphQLList
 } = graphql;
 
 const CompanyType = new GraphQLObjectType({
     name: 'Company',
-    fields: {
+    fields: () => ({
+        // note that this object is wrapped in an arrow function. This is to solve the circular reference problem we're having: we are using User Type in Comany Type, which means User Type has to be defined BEFORE company type; but User Type itslf is using Company Type, which means Company Type has to be defined first. As a solution, we're exploiting one of the features of JS closure: arrow functions don't have their own "this" context, which means they are executed with the this context of where they are called.
         id: { type: GraphQLString },
         name: { type: GraphQLString },
-        description: { type: GraphQLString }
+        description: { type: GraphQLString },
         // we treat associations between types exactly as though they were another field. You can see the company field added to the user type.
-    }
+        users: {
+            type: new GraphQLList(UserType),
+            // we have to tell GraphQL to expect a whole list of users associted with the company.
+            async resolve(parentValue, args) {
+                // reminder: to get current instance we're working with, use parentValue.
+                let { data } = await axios.get(
+                    `http://localhost:3000/companies/${parentValue.id}/users`
+                );
+                console.log({ data });
+                return data;
+            }
+        }
+        // we already have the relationship defined in the DB - one company to many users. But until we added the user property, GraphQL didn't know about this  relationship, even after we put a "company" property on the UserType.
+    })
 });
 // the order of definiton of the types really matters! Don't know why yet, but it does.
 
